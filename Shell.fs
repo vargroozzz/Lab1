@@ -18,8 +18,8 @@ module Shell =
 
     type State =
         /// store the child state in your main state
-        { aboutState: About.State
-          counterState: Counter.State }
+        { AboutState: About.State
+          CounterState: Counter.State }
 
     type Msg =
         | AboutMsg of About.Msg
@@ -28,8 +28,8 @@ module Shell =
     let init =
         let aboutState, aboutCmd = About.init
         let counterState = Counter.init
-        { aboutState = aboutState
-          counterState = counterState },
+        { AboutState = aboutState
+          CounterState = counterState },
         /// If your children controls don't emit any commands
         /// in the init function, you can just return Cmd.none
         /// otherwise, you can use a batch operation on all of them
@@ -39,16 +39,16 @@ module Shell =
     let update (msg: Msg) (state: State): State * Cmd<_> =
         match msg with
         | AboutMsg bpmsg ->
-            let aboutState, cmd = About.update bpmsg state.aboutState
-            { state with aboutState = aboutState },
+            let aboutState, cmd = About.update bpmsg state.AboutState
+            { state with AboutState = aboutState },
             /// map the message to the kind of message
             /// your child control needs to handle
             Cmd.map AboutMsg cmd
         | CounterMsg countermsg ->
             let counterMsg =
-                Counter.update countermsg state.counterState
+                Counter.update countermsg state.CounterState
 
-            { state with counterState = counterMsg },
+            { state with CounterState = counterMsg },
             /// map the message to the kind of message
             /// your child control needs to handle
             Cmd.none
@@ -59,14 +59,14 @@ module Shell =
                                                                                                                 "Counter Sample"
                                                                                                             TabItem.content
                                                                                                                 (Counter.view
-                                                                                                                    state.counterState
+                                                                                                                    state.CounterState
                                                                                                                      (CounterMsg
                                                                                                                       >> dispatch)) ]
                                                                                            TabItem.create [ TabItem.header
                                                                                                                 "About"
                                                                                                             TabItem.content
                                                                                                                 (About.view
-                                                                                                                    state.aboutState
+                                                                                                                    state.AboutState
                                                                                                                      (AboutMsg
                                                                                                                       >> dispatch)) ] ] ] ] ]
 
@@ -78,8 +78,8 @@ module Shell =
         inherit HostWindow()
 
         do
-            base.Title <- "Full App"
-            base.Width <- 800.0
+            base.Title <- "My Excel"
+            base.Width <- 900.0
             base.Height <- 600.0
             base.MinWidth <- 800.0
             base.MinHeight <- 600.0
