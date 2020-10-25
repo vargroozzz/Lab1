@@ -38,7 +38,7 @@ module Counter =
 
     type Assoc = Associativity
 
-    let parseExpression str state =
+    let rec parseExpression str state =
 
         let int32Ws = pint32 .>> spaces
         let strWs s = pstring s .>> spaces
@@ -51,9 +51,9 @@ module Counter =
 
         let pcell =
             pipe2 pSatChar' pint32 (fun c i ->
-                if i >= state.Table.Item(0).Item(i).Length
-                then "#ERROR"
-                else state.Table.Item(int c + 1 - int 'A').Item(i))
+                if i >= state.Table.Item(0).Length
+                then 0
+                else int (parseExpression (state.Table.Item(int c + 1 - int 'A').Item(i)) state))
 
         let opp =
             new OperatorPrecedenceParser<int, unit, unit>()
@@ -62,6 +62,7 @@ module Counter =
 
         let term =
             (pint32 .>> spaces)
+            <|> (pcell .>> spaces)
             <|> between (strWs "(") (strWs ")") expr
 
         opp.TermParser <- term
