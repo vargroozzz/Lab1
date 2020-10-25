@@ -38,9 +38,22 @@ module Counter =
 
     type Assoc = Associativity
 
-    let parseExpression str =
+    let parseExpression str state =
+
         let int32Ws = pint32 .>> spaces
         let strWs s = pstring s .>> spaces
+
+        let pSatChar =
+            anyOf (Seq.map (fun c -> char (c - 1 + (int 'A'))) [ 1 .. state.Table.Length - 1 ])
+
+        let pSatChar' =
+            (satisfy (fun c -> List.exists (fun el -> el = int c + 1 - int 'A') [ 1 .. state.Table.Length - 1 ]))
+
+        let pcell =
+            pipe2 pSatChar' pint32 (fun c i ->
+                if i >= state.Table.Item(0).Item(i).Length
+                then "#ERROR"
+                else state.Table.Item(int c + 1 - int 'A').Item(i))
 
         let opp =
             new OperatorPrecedenceParser<int, unit, unit>()
@@ -197,7 +210,7 @@ module Counter =
                                                    then ((col - 1 + (int 'A')) |> char |> string)
                                                    else if isZeroCol
                                                    then (row |> string)
-                                                   else (parseExpression (state.Table.Item(row).Item(col))))
+                                                   else (parseExpression (state.Table.Item(row).Item(col)) state))
                                               // Button.content (parseExpression (row, col))
                                               Button.onClick
                                                   (if isZeroRowOrCol

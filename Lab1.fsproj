@@ -6,7 +6,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="Parser.fs" />
         <Compile Include="Counter.fs" />
         <Compile Include="About.fs" />
         <Compile Include="Shell.fs" />
