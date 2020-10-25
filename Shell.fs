@@ -79,11 +79,10 @@ module Shell =
 
         do
             base.Title <- "My Excel"
-            base.Width <- 900.0
-            base.Height <- 600.0
+            base.Width <- 1200.0
+            base.Height <- 800.0
             base.MinWidth <- 800.0
             base.MinHeight <- 600.0
-
             //this.VisualRoot.VisualRoot.Renderer.DrawFps <- true
             //this.VisualRoot.VisualRoot.Renderer.DrawDirtyRects <- true
 

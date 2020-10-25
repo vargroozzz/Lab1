@@ -6,6 +6,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <Compile Include="Parser.fs" />
         <Compile Include="Counter.fs" />
         <Compile Include="About.fs" />
         <Compile Include="Shell.fs" />
@@ -18,6 +19,7 @@
     
     <ItemGroup>
         <PackageReference Include="Avalonia.Desktop" Version="0.9.12" />
+        <PackageReference Include="FParsec" Version="1.1.1" />
         <PackageReference Include="JaggerJo.Avalonia.FuncUI" Version="0.4.0" />
         <PackageReference Include="JaggerJo.Avalonia.FuncUI.DSL" Version="0.4.0" />
         <PackageReference Include="JaggerJo.Avalonia.FuncUI.Elmish" Version="0.4.0" />
