@@ -4,6 +4,8 @@ open Avalonia.Controls.ApplicationLifetimes
 open Avalonia
 open Microsoft.FSharp.Core
 open FParsec
+open System.Text.RegularExpressions
+open System
 
 module Counter =
     open Avalonia.FuncUI.Types
@@ -39,6 +41,32 @@ module Counter =
     type Assoc = Associativity
 
     let rec parseExpression str state =
+        let rec parsedStr s =
+            let cellReplacer = Regex @"[A-Z]\d+"
+            let matches = cellReplacer.Matches s
+            match cellReplacer.IsMatch s with
+            | false -> s
+            | true ->
+                let cToI (c: char) = int c + 1 - int 'A'
+                let iToC (i: int) = char (i - 1 + int 'A')
+
+                let parseCell (col :: row) =
+                    (row |> Array.ofList |> String |> int, cToI col)
+
+                let replacers =
+                    matches
+                    |> (fun mColl ->
+                        [ for i in 0 .. mColl.Count - 1 ->
+                            mColl.Item(i).Value
+                            |> Seq.toList
+                            |> parseCell
+                            |> (fun (r, c) -> (mColl.Item(i).Value, "(" + state.Table.Item(r).Item(c) + ")")) ])
+
+                List.fold (fun (st: string) (subst: string, replacer: string) -> st.Replace(subst, replacer)) s
+                    replacers
+                |> parsedStr
+
+
 
         let int32Ws = pint32 .>> spaces
         let strWs s = pstring s .>> spaces
@@ -55,6 +83,8 @@ module Counter =
                 then 0
                 else int (parseExpression (state.Table.Item(int c + 1 - int 'A').Item(i)) state))
 
+        let pAnyCell = manySatisfy2 isUpper isDigit
+
         let opp =
             new OperatorPrecedenceParser<int, unit, unit>()
 
@@ -62,7 +92,7 @@ module Counter =
 
         let term =
             (pint32 .>> spaces)
-            <|> (pcell .>> spaces)
+            // <|> (pcell .>> spaces)
             <|> between (strWs "(") (strWs ")") expr
 
         opp.TermParser <- term
@@ -90,7 +120,7 @@ module Counter =
             pipe2 int32Ws (strWs "+" >>. int32Ws) (+)
 
 
-        match run expr str with
+        match run expr (parsedStr str) with
         | Success (a, b, c) -> sprintf "%i" a
         | Failure (a, b, c) -> if str = "" then "" else "#ERROR"
 
