@@ -44,23 +44,49 @@ module Counter =
         let rec parsedStr s =
             let cellReplacer = Regex @"[A-Z]\d+"
             let matches = cellReplacer.Matches s
-            match cellReplacer.IsMatch s with
+
+            let matchVals (matchColl: MatchCollection) = [ for m in matchColl -> m.Value ]
+            let cToI (c: char) = int c + 1 - int 'A'
+            let iToC (i: int) = char (i - 1 + int 'A')
+
+            let parseCell (col :: row) =
+                (row |> Array.ofList |> String |> int, cToI col)
+
+            let isRec checkingString =
+                let getCell (r, c) = state.Table.Item(r).Item(c)
+
+                let rec helper n chS =
+                    if n
+                       >= state.Table.Length
+                       * state.Table.Item(0).Length then
+                        true
+                    else if cellReplacer.IsMatch chS then
+                        List.exists
+                            (helper (n + 1))
+                            (chS
+                             |> cellReplacer.Matches
+                             |> matchVals
+                             |> List.map (Seq.toList >> parseCell >> getCell))
+                    else
+                        false
+
+                helper 0 checkingString
+
+            let isNotRec = not (isRec s)
+
+            match cellReplacer.IsMatch s && isNotRec with
             | false -> s
             | true ->
-                let cToI (c: char) = int c + 1 - int 'A'
-                let iToC (i: int) = char (i - 1 + int 'A')
 
-                let parseCell (col :: row) =
-                    (row |> Array.ofList |> String |> int, cToI col)
 
                 let replacers =
                     matches
                     |> (fun mColl ->
-                        [ for i in 0 .. mColl.Count - 1 ->
-                            mColl.Item(i).Value
+                        [ for m in mColl ->
+                            m.Value
                             |> Seq.toList
                             |> parseCell
-                            |> (fun (r, c) -> (mColl.Item(i).Value, "(" + state.Table.Item(r).Item(c) + ")")) ])
+                            |> (fun (r, c) -> (m.Value, "(" + state.Table.Item(r).Item(c) + ")")) ])
 
                 List.fold (fun (st: string) (subst: string, replacer: string) -> st.Replace(subst, replacer)) s
                     replacers
