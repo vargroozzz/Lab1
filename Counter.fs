@@ -6,6 +6,7 @@ open Microsoft.FSharp.Core
 open FParsec
 open System.Text.RegularExpressions
 open System
+open System.IO
 
 module Counter =
     open Avalonia.FuncUI.Types
@@ -37,6 +38,24 @@ module Counter =
           Cursor = (2, 2)
           CurrentCellData = "" }
 
+    let commonWindow txt =
+        let window = Window()
+        window.VerticalContentAlignment <- VerticalAlignment.Center
+        window.HorizontalContentAlignment <- HorizontalAlignment.Center
+        window.Height <- 100.0
+        window.Width <- 200.0
+        window.BorderBrush <- Immutable.ImmutableSolidColorBrush((Color.Parse "black"), 1.0)
+        // window.Title <- txt
+        window.Content <- txt
+        // Button.create [ Button.onClick (fun _ -> window.Hide())
+        //                 Button.content "Ok"
+        //                 Button.borderBrush "black"
+        //                 Button.horizontalAlignment HorizontalAlignment.Left ]
+        window
+
+    // let saveIntoFile state =
+    //     let savesDirectory = Directory.GetCurrentDirectory() + "/saves"
+    //     let fileName n = if Directory.Exists(Directory.GetCurrentDirectory() + "/saves") then
 
     type Assoc = Associativity
 
@@ -46,8 +65,7 @@ module Counter =
             let matches = cellReplacer.Matches s
 
             let matchVals (matchColl: MatchCollection) = [ for m in matchColl -> m.Value ]
-            let cToI (c: char) = int c + 1 - int 'A'
-            let iToC (i: int) = char (i - 1 + int 'A')
+            let cToI c = int c + 1 - int 'A'
 
             let parseCell (col :: row) =
                 (row |> Array.ofList |> String |> int, cToI col)
@@ -77,8 +95,6 @@ module Counter =
             match cellReplacer.IsMatch s && isNotRec with
             | false -> s
             | true ->
-
-
                 let replacers =
                     matches
                     |> (fun mColl ->
@@ -92,24 +108,7 @@ module Counter =
                     replacers
                 |> parsedStr
 
-
-
-        let int32Ws = pint32 .>> spaces
         let strWs s = pstring s .>> spaces
-
-        let pSatChar =
-            anyOf (Seq.map (fun c -> char (c - 1 + (int 'A'))) [ 1 .. state.Table.Length - 1 ])
-
-        let pSatChar' =
-            (satisfy (fun c -> List.exists (fun el -> el = int c + 1 - int 'A') [ 1 .. state.Table.Length - 1 ]))
-
-        let pcell =
-            pipe2 pSatChar' pint32 (fun c i ->
-                if i >= state.Table.Item(0).Length
-                then 0
-                else int (parseExpression (state.Table.Item(int c + 1 - int 'A').Item(i)) state))
-
-        let pAnyCell = manySatisfy2 isUpper isDigit
 
         let opp =
             new OperatorPrecedenceParser<int, unit, unit>()
@@ -118,7 +117,6 @@ module Counter =
 
         let term =
             (pint32 .>> spaces)
-            // <|> (pcell .>> spaces)
             <|> between (strWs "(") (strWs ")") expr
 
         opp.TermParser <- term
@@ -126,24 +124,14 @@ module Counter =
         opp.AddOperator(PrefixOperator("+", spaces, 1, true, id))
         opp.AddOperator(PrefixOperator("-", spaces, 1, false, (fun x -> 0 - x)))
         opp.AddOperator(InfixOperator("^", spaces, 2, Assoc.Right, (fun x y -> int (float x ** float y))))
-        opp.AddOperator(PrefixOperator("inc", spaces, 2, true, (fun x -> x + 1)))
-        opp.AddOperator(PrefixOperator("dec", spaces, 2, true, (fun x -> x - 1)))
+        opp.AddOperator(PrefixOperator("inc", spaces, 2, false, (fun x -> x + 1)))
+        opp.AddOperator(PrefixOperator("dec", spaces, 2, false, (fun x -> x - 1)))
         opp.AddOperator(InfixOperator("div", spaces, 2, Assoc.Left, (/)))
         opp.AddOperator(InfixOperator("mod", spaces, 2, Assoc.Left, (%)))
         opp.AddOperator(InfixOperator("+", spaces, 3, Assoc.Left, (+)))
         opp.AddOperator(InfixOperator("-", spaces, 3, Assoc.Left, (-)))
         opp.AddOperator(InfixOperator("*", spaces, 4, Assoc.Left, (fun x y -> x * y)))
         opp.AddOperator(InfixOperator("/", spaces, 4, Assoc.Left, (/)))
-
-        let exprParser =
-            (pipe2 int32Ws (strWs "*" >>. int32Ws) (fun a b -> a * b))
-            <|> (pipe2 int32Ws (strWs "/" >>. int32Ws) (/))
-            <|> (pipe2 int32Ws (strWs "+" >>. int32Ws) (+))
-            <|> (pipe2 int32Ws (strWs "-" >>. int32Ws) (-))
-            <|> pint32
-
-        let sumP =
-            pipe2 int32Ws (strWs "+" >>. int32Ws) (+)
 
 
         match run expr (parsedStr str) with
@@ -171,13 +159,26 @@ module Counter =
             { state with
                   Table = List.map (fun row -> "" :: row) state.Table }
         | RemoveRowMsg ->
-            { state with
-                  Table = [ for i in 0 .. state.Table.Length - 2 -> state.Table.Item(i) ] }
+            if state.Table
+               |> List.last
+               |> List.exists (fun el -> el <> "") then
+                commonWindow "Last row isn't empty"
+                |> (fun w -> w.Show())
+                state
+            else
+                { state with
+                      Table = [ for i in 0 .. state.Table.Length - 2 -> state.Table.Item(i) ] }
         | RemoveColumnMsg ->
-            { state with
-                  Table =
-                      [ for i in 0 .. state.Table.Length - 1 ->
-                          [ for j in 0 .. state.Table.Item(0).Length - 2 -> state.Table.Item(i).Item(j) ] ] }
+            if [ for row in state.Table -> row |> List.last ]
+               |> List.exists (fun el -> el <> "") then
+                commonWindow "Last column isn't empty"
+                |> (fun w -> w.Show())
+                state
+            else
+                { state with
+                      Table =
+                          [ for i in 0 .. state.Table.Length - 1 ->
+                              [ for j in 0 .. state.Table.Item(0).Length - 2 -> state.Table.Item(i).Item(j) ] ] }
 
     let generateInputBox state dispatch =
         UniformGrid.create [ UniformGrid.rows 3
@@ -193,32 +194,45 @@ module Counter =
                                                                              (state.Table.Item(fst (state.Cursor))
                                                                                    .Item(snd (state.Cursor)))) ]
                                                     Button.create [ Button.onClick (fun _ -> (UpdateCellMsg |> dispatch))
-                                                                    Button.content (string "Set cell value")
+                                                                    Button.content "Set cell value"
                                                                     Button.borderBrush "black"
                                                                     Button.isDefault true
                                                                     //   Button.classes [ "plus" ]
                                                                     Button.horizontalAlignment HorizontalAlignment.Left ]
                                                     Button.create [ Button.onClick (fun _ -> (AddRowMsg |> dispatch))
-                                                                    Button.content (string "Add new row")
+                                                                    Button.content "Add new row"
                                                                     Button.borderBrush "black"
                                                                     //   Button.classes [ "plus" ]
                                                                     Button.horizontalAlignment HorizontalAlignment.Left ]
                                                     Button.create [ Button.onClick (fun _ -> (AddColumnMsg |> dispatch))
-                                                                    Button.content (string "Add new column")
+                                                                    Button.content "Add new column"
                                                                     Button.borderBrush "black"
                                                                     //   Button.classes [ "plus" ]
                                                                     Button.horizontalAlignment HorizontalAlignment.Left ]
                                                     Button.create [ Button.onClick (fun _ -> (RemoveRowMsg |> dispatch))
-                                                                    Button.content (string "Remove last row")
+                                                                    Button.content "Remove last row"
                                                                     Button.borderBrush "black"
                                                                     //   Button.classes [ "plus" ]
                                                                     Button.horizontalAlignment HorizontalAlignment.Left ]
                                                     Button.create [ Button.onClick (fun _ ->
                                                                         (RemoveColumnMsg |> dispatch))
-                                                                    Button.content (string "Remove last column")
+                                                                    Button.content "Remove last column"
                                                                     Button.borderBrush "black"
                                                                     //   Button.classes [ "plus" ]
-                                                                    Button.horizontalAlignment HorizontalAlignment.Left ] ] ]
+                                                                    Button.horizontalAlignment HorizontalAlignment.Left ]
+                                                    // Button.create [ Button.onClick (fun _ ->
+                                                    //                     (commonWindow "a" |> (fun w -> w.Show())))
+                                                    //                 // Button.onClick (fun _ ->
+                                                    //                 //     (commonWindow "a"
+                                                    //                 //      |> (fun w ->
+                                                    //                 //          w.ShowDialog
+                                                    //                 //              ((Application.Current.ApplicationLifetime :?> IClassicDesktopStyleApplicationLifetime).MainWindow)
+                                                    //                 //          |> ignore)))
+                                                    //                 Button.content "Window test"
+                                                    //                 Button.borderBrush "black"
+                                                    //                 //   Button.classes [ "plus" ]
+                                                    //                 Button.horizontalAlignment HorizontalAlignment.Left ]
+                                                     ] ]
 
     let genetateCell row col state dispatch =
         let isZeroRow = row = 0
@@ -298,7 +312,14 @@ module Counter =
         DockPanel.create [ DockPanel.children [ StackPanel.create [ StackPanel.dock Dock.Top
                                                                     StackPanel.background "white"
                                                                     StackPanel.orientation Orientation.Vertical
-                                                                    StackPanel.children [ generateInputBox
+                                                                    StackPanel.children [ Button.create [ Button.onClick (fun _ ->
+                                                                                                              (AddColumnMsg
+                                                                                                               |> dispatch))
+                                                                                                          Button.content
+                                                                                                              "Quit with save"
+                                                                                                          Button.borderBrush
+                                                                                                              "black" ]
+                                                                                          generateInputBox
                                                                                               state
                                                                                               dispatch
                                                                                           generateTable state dispatch ] ] ] ]

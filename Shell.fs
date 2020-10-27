@@ -56,7 +56,7 @@ module Shell =
     let view (state: State) (dispatch) =
         DockPanel.create [ DockPanel.children [ TabControl.create [ TabControl.tabStripPlacement Dock.Top
                                                                     TabControl.viewItems [ TabItem.create [ TabItem.header
-                                                                                                                "Counter Sample"
+                                                                                                                "Table"
                                                                                                             TabItem.content
                                                                                                                 (Counter.view
                                                                                                                     state.CounterState
