@@ -5,8 +5,12 @@ open Avalonia
 open Microsoft.FSharp.Core
 open FParsec
 open System.Text.RegularExpressions
+open System.Text.Json
+open System.Text.Json.Serialization
 open System
 open System.IO
+open System.Threading.Tasks
+
 
 module Counter =
     open Avalonia.FuncUI.Types
@@ -19,6 +23,16 @@ module Counter =
     type Row = int
     type Col = int
 
+    type StateCrutch =
+        { Table: string array array
+          Cursor: (Row * Col)
+          CurrentCellData: string }
+
+    type State =
+        { Table: string list list
+          Cursor: (Row * Col)
+          CurrentCellData: string }
+
     type Msg =
         | UpdateCellMsg
         | AddRowMsg
@@ -27,16 +41,22 @@ module Counter =
         | RemoveColumnMsg
         | ChangeCursorMsg of Row * Col
         | CurrentCellDataMsg of string
+        | NewTableMsg of State
+        | SaveAndQuitMsg
 
-    type State =
-        { Table: string list list
-          Cursor: (Row * Col)
-          CurrentCellData: string }
+    let crutchToState (st: StateCrutch) =
+        { Table = st.Table |> Array.toList |> List.map Array.toList
+          Cursor = st.Cursor
+          CurrentCellData = st.CurrentCellData }
 
-    let init =
+
+    let init: State =
         { Table = [ for _ in 0 .. 10 -> [ for _ in 0 .. 10 -> "" ] ]
           Cursor = (2, 2)
           CurrentCellData = "" }
+
+    let mainWindow () =
+        (Application.Current.ApplicationLifetime :?> IClassicDesktopStyleApplicationLifetime).MainWindow
 
     let commonWindow txt =
         let window = Window()
@@ -59,8 +79,12 @@ module Counter =
 
     type Assoc = Associativity
 
-    let rec parseExpression str state =
-        let rec parsedStr s =
+
+    let parseExpression str state =
+        let parseCursor (r, c) =
+            new string([| char (r + int 'A' - 1); char c |])
+
+        let rec parseStr s =
             let cellReplacer = Regex @"[A-Z]\d+"
             let matches = cellReplacer.Matches s
 
@@ -92,8 +116,10 @@ module Counter =
 
             let isNotRec = not (isRec s)
 
+
+
             match cellReplacer.IsMatch s && isNotRec with
-            | false -> s
+            | false -> if s.Contains("/ (0)") || s.Contains("/ 0") then "#ERROR" else s
             | true ->
                 let replacers =
                     matches
@@ -106,7 +132,7 @@ module Counter =
 
                 List.fold (fun (st: string) (subst: string, replacer: string) -> st.Replace(subst, replacer)) s
                     replacers
-                |> parsedStr
+                |> parseStr
 
         let strWs s = pstring s .>> spaces
 
@@ -121,6 +147,7 @@ module Counter =
 
         opp.TermParser <- term
 
+
         opp.AddOperator(PrefixOperator("+", spaces, 1, true, id))
         opp.AddOperator(PrefixOperator("-", spaces, 1, false, (fun x -> 0 - x)))
         opp.AddOperator(InfixOperator("^", spaces, 2, Assoc.Right, (fun x y -> int (float x ** float y))))
@@ -133,21 +160,19 @@ module Counter =
         opp.AddOperator(InfixOperator("*", spaces, 4, Assoc.Left, (fun x y -> x * y)))
         opp.AddOperator(InfixOperator("/", spaces, 4, Assoc.Left, (/)))
 
-
-        match run expr (parsedStr str) with
-        | Success (a, b, c) -> sprintf "%i" a
+        match run expr (str |> parseStr) with
+        | Success (a, b, c) -> a |> sprintf "%i"
         | Failure (a, b, c) -> if str = "" then "" else "#ERROR"
 
-    let updateCell (row, col) state =
+    let updateCell state =
+        let (row, col) = state.Cursor
         [ for i in 0 .. state.Table.Length - 1 ->
             [ for j in 0 .. state.Table.Item(0).Length - 1 ->
                 if i = row && j = col then state.CurrentCellData else state.Table.Item(i).Item(j) ] ]
 
     let update (msg: Msg) (state: State) =
         match msg with
-        | UpdateCellMsg ->
-            { state with
-                  Table = updateCell (state.Cursor) state }
+        | UpdateCellMsg -> { state with Table = updateCell state }
         | ChangeCursorMsg (row, col) -> { state with Cursor = (row, col) }
         | CurrentCellDataMsg str -> { state with CurrentCellData = str }
         | AddRowMsg ->
@@ -179,6 +204,105 @@ module Counter =
                       Table =
                           [ for i in 0 .. state.Table.Length - 1 ->
                               [ for j in 0 .. state.Table.Item(0).Length - 2 -> state.Table.Item(i).Item(j) ] ] }
+        | SaveAndQuitMsg ->
+
+            // let save = OpenFileDialog()
+            // let save = SaveFileDialog()
+            // save.InitialFileName <- "testdb.json"
+            // let filter = FileDialogFilter()
+            // filter.Name <- "json"
+            // filter.Extensions <- (Collections.Generic.List<string> [ "json" ])
+            // save.Filters.Add(filter)
+            // save.Directory <- Directory.GetCurrentDirectory()
+            // save.Title <- "Choose file to save"
+
+            // let fileToSave =
+            //     (async {
+            //         printfn "breakpoint"
+            //         let! files = save.ShowAsync(mainWindow ()) |> Async.AwaitTask
+            //         return files
+            //      }
+            //      |> Async.RunSynchronously)
+
+            // let disp =
+            //     Async.StartWithContinuations
+            //         (async { disp.InvokeAsync((fun () -> callback.Invoke(context))) }, ignore, error, cancel, ct)
+
+            // let fileToSaveTask =
+            //     printfn "breakpoint 1"
+            //     save.ShowAsync(mainWindow ())
+
+            // printfn "breakpoint 2"
+
+            // Async.StartWithContinuations
+            //     ((fileToSaveTask |> Async.AwaitTask),
+            //      (fun filepath -> File.WriteAllText(filepath, "myJSON")),
+            //      (fun _ -> printfn "exception"),
+            //      (fun _ -> printfn "cancellation"))
+            // printfn "breakpoint 3"
+            // Threading.Thread.Sleep(2000)
+            // fileToSaveTask.CreationOptions <- TaskCreationOptions.AttachedToParent
+            // fileToSaveTask.Start()
+            // fileToSaveTask.Wait()
+            // let fileToSave = fileToSaveTask().Result
+
+            // let fileToSave = fileToSaveTask |> Async.AwaitTask
+            // printfn "%s" fileToSave
+
+            // File.WriteAllText(fileToSave, state.ToString())
+            // File.WriteAllText(fileToSave, "myJSON")
+
+
+            let files =
+                (DirectoryInfo(Directory.GetCurrentDirectory())).GetFiles("*.json")
+                |> Array.toList
+                |> List.map (fun fi -> fi.Name)
+
+            let createFile (path: string) =
+                Button.create [ Button.width 600.0
+                                Button.height (300.0 / (files.Length |> float))
+                                TextBox.verticalAlignment VerticalAlignment.Center
+                                TextBox.horizontalAlignment HorizontalAlignment.Center
+                                Button.content path
+                                Button.onClick (fun _ ->
+                                    File.WriteAllText(path, state.ToString())
+                                    mainWindow().Close())
+
+                                 ]
+
+            let window = Window()
+            window.VerticalContentAlignment <- VerticalAlignment.Center
+            window.HorizontalContentAlignment <- HorizontalAlignment.Center
+            window.Width <- 800.0
+            window.Height <- 400.0
+
+            window.BorderBrush <- Immutable.ImmutableSolidColorBrush((Color.Parse "black"), 1.0)
+            window.Content <-
+                ViewBox.create [ Viewbox.stretch Stretch.UniformToFill
+                                 Viewbox.child
+                                     (UniformGrid.create [ UniformGrid.width 600.0
+                                                           UniformGrid.height 300.0
+                                                           UniformGrid.rows files.Length
+                                                           UniformGrid.columns 1
+                                                           // Grid.background "black"
+                                                           UniformGrid.horizontalAlignment HorizontalAlignment.Left
+                                                           // Grid.horizontalScrollBarVisibility ScrollBarVisibility.Visible
+                                                           // Grid.verticalScrollBarVisibility ScrollBarVisibility.Visible
+                                                           UniformGrid.children [ for i in 1 .. files.Length ->
+                                                                                      createFile (files.Item(i - 1)) ] ]) ]
+            //    (List.map createFile files) |> Helpers.generalize
+            // Button.create [ Button.onClick (fun _ -> window.Hide())
+            //                 Button.content "Ok"
+            //                 Button.borderBrush "black"
+            //                 Button.horizontalAlignment HorizontalAlignment.Left ]
+            window.Show()
+
+            // mainWindow().Close()
+
+            state
+        | NewTableMsg st -> st
+
+
 
     let generateInputBox state dispatch =
         UniformGrid.create [ UniformGrid.rows 3
@@ -197,28 +321,23 @@ module Counter =
                                                                     Button.content "Set cell value"
                                                                     Button.borderBrush "black"
                                                                     Button.isDefault true
-                                                                    //   Button.classes [ "plus" ]
                                                                     Button.horizontalAlignment HorizontalAlignment.Left ]
                                                     Button.create [ Button.onClick (fun _ -> (AddRowMsg |> dispatch))
                                                                     Button.content "Add new row"
                                                                     Button.borderBrush "black"
-                                                                    //   Button.classes [ "plus" ]
                                                                     Button.horizontalAlignment HorizontalAlignment.Left ]
                                                     Button.create [ Button.onClick (fun _ -> (AddColumnMsg |> dispatch))
                                                                     Button.content "Add new column"
                                                                     Button.borderBrush "black"
-                                                                    //   Button.classes [ "plus" ]
                                                                     Button.horizontalAlignment HorizontalAlignment.Left ]
                                                     Button.create [ Button.onClick (fun _ -> (RemoveRowMsg |> dispatch))
                                                                     Button.content "Remove last row"
                                                                     Button.borderBrush "black"
-                                                                    //   Button.classes [ "plus" ]
                                                                     Button.horizontalAlignment HorizontalAlignment.Left ]
                                                     Button.create [ Button.onClick (fun _ ->
                                                                         (RemoveColumnMsg |> dispatch))
                                                                     Button.content "Remove last column"
                                                                     Button.borderBrush "black"
-                                                                    //   Button.classes [ "plus" ]
                                                                     Button.horizontalAlignment HorizontalAlignment.Left ]
                                                     // Button.create [ Button.onClick (fun _ ->
                                                     //                     (commonWindow "a" |> (fun w -> w.Show())))
@@ -260,20 +379,6 @@ module Counter =
                                               Button.borderBrush
                                                   (if state.Cursor = (row, col) then "green" else "black")
                                               Button.borderThickness (if state.Cursor = (row, col) then 1.5 else 0.5)
-                                              // Button.onPointerEnter (fun args ->
-                                              //     ((args.Source) :?> Button).BorderBrush <- Immutable.ImmutableSolidColorBrush
-                                              //                                                   ((Color.Parse "red"), 1.0))
-                                              // Button.onPointerLeave (fun args ->
-                                              //     ((args.Source) :?> Button).BorderBrush <- Immutable.ImmutableSolidColorBrush
-                                              //                                                   ((Color.Parse
-                                              //                                                       (if state.Cursor = (row, col) then
-                                              //                                                           "green"
-                                              //                                                        else
-                                              //                                                            "black")),
-                                              //                                                    1.0))
-                                              // Button.fontWeight
-                                              // Button.padding (left = 5.0, top = 5.0, right = 5.0, bottom = 5.0)
-                                              // Button.margin 1.0
                                               Button.content
                                                   (if isZeroRowAndCol
                                                    then ""
@@ -282,11 +387,10 @@ module Counter =
                                                    else if isZeroCol
                                                    then (row |> string)
                                                    else (parseExpression (state.Table.Item(row).Item(col)) state))
-                                              // Button.content (parseExpression (row, col))
                                               Button.onClick
                                                   (if isZeroRowOrCol
                                                    then ignore
-                                                   else (fun _ -> dispatch (ChangeCursorMsg(row, col)))) ]) ]
+                                                   else (fun _ -> (row, col) |> ChangeCursorMsg |> dispatch)) ]) ]
 
     let generateTable state dispatch =
         ViewBox.create [ Viewbox.stretch Stretch.UniformToFill
@@ -312,14 +416,7 @@ module Counter =
         DockPanel.create [ DockPanel.children [ StackPanel.create [ StackPanel.dock Dock.Top
                                                                     StackPanel.background "white"
                                                                     StackPanel.orientation Orientation.Vertical
-                                                                    StackPanel.children [ Button.create [ Button.onClick (fun _ ->
-                                                                                                              (AddColumnMsg
-                                                                                                               |> dispatch))
-                                                                                                          Button.content
-                                                                                                              "Quit with save"
-                                                                                                          Button.borderBrush
-                                                                                                              "black" ]
-                                                                                          generateInputBox
+                                                                    StackPanel.children [ generateInputBox
                                                                                               state
                                                                                               dispatch
                                                                                           generateTable state dispatch ] ] ] ]

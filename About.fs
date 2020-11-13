@@ -59,13 +59,17 @@ module About =
         StackPanel.create [ StackPanel.dock dock
                             StackPanel.verticalAlignment VerticalAlignment.Top
                             StackPanel.children [ TextBlock.create [ TextBlock.classes [ "title" ]
+                                                                     TextBlock.fontSize 24.0
                                                                      TextBlock.text
-                                                                         "Thank you for using Avalonia.FuncUI" ]
+                                                                         "Виконано Андращуком Едуардом, варіант 2" ]
                                                   TextBlock.create [ TextBlock.classes [ "subtitle" ]
+                                                                     TextBlock.fontSize 18.0
                                                                      TextBlock.text
-                                                                         ("Avalonia.FuncUI is a project that provides you with an Elmish DSL for Avalonia Controls\n"
-                                                                          + "for you to use in an F# idiomatic way. We hope you like the project and spread the word :)\n"
-                                                                          + "Questions ? Reach to us on Gitter, also check the links below") ] ] ]
+                                                                         ("Доступні операції:\n"
+                                                                          + "+, -, *, / (бінарні операції);\n"
+                                                                          + "mod, dіv;\n"
+                                                                          + "+, - (унарні операції);\n"
+                                                                          + "іnc, dec") ] ] ]
         |> Helpers.generalize
 
 
@@ -119,6 +123,4 @@ module About =
         DockPanel.create [ DockPanel.horizontalAlignment HorizontalAlignment.Center
                            DockPanel.verticalAlignment VerticalAlignment.Top
                            DockPanel.margin (0.0, 20.0, 0.0, 0.0)
-                           DockPanel.children [ headerView Dock.Top
-                                                avaloniaLinksView Dock.Left dispatch
-                                                avaloniaFuncUILinksView Dock.Right dispatch ] ]
+                           DockPanel.children [ headerView Dock.Top ] ]

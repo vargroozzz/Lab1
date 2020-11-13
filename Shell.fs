@@ -1,5 +1,7 @@
 namespace Lab1
 
+open System.IO
+
 /// This is the main module of your application
 /// here you handle all of your child pages as well as their
 /// messages and their updates, useful to update multiple parts
@@ -15,21 +17,26 @@ module Shell =
     open Avalonia.FuncUI.Builder
     open Avalonia.FuncUI.Components.Hosts
     open Avalonia.FuncUI.Elmish
+    open System.Text.Json
 
     type State =
         /// store the child state in your main state
         { AboutState: About.State
-          CounterState: Counter.State }
+          CounterState: Counter.State
+          SaveFileState: SaveFile.State }
 
     type Msg =
         | AboutMsg of About.Msg
         | CounterMsg of Counter.Msg
+        | SaveFileMsg of SaveFile.Msg
 
     let init =
         let aboutState, aboutCmd = About.init
         let counterState = Counter.init
+        let saveFileState = SaveFile.init
         { AboutState = aboutState
-          CounterState = counterState },
+          CounterState = counterState
+          SaveFileState = saveFileState },
         /// If your children controls don't emit any commands
         /// in the init function, you can just return Cmd.none
         /// otherwise, you can use a batch operation on all of them
@@ -52,6 +59,42 @@ module Shell =
             /// map the message to the kind of message
             /// your child control needs to handle
             Cmd.none
+        | SaveFileMsg savefilemsg ->
+            match savefilemsg with
+            | SaveFile.LoadMsg ->
+                let jsonNewState =
+                    File.ReadAllText state.SaveFileState.ChosenFile
+
+                let newState =
+                    JsonSerializer.Deserialize<Counter.StateCrutch> jsonNewState
+
+                let counterMsg =
+                    Counter.update
+                        (newState
+                         |> Counter.crutchToState
+                         |> Counter.NewTableMsg)
+                        state.CounterState
+
+                { state with CounterState = counterMsg }, Cmd.none
+            | SaveFile.SaveMsg ->
+                File.WriteAllText(state.SaveFileState.ChosenFile, JsonSerializer.Serialize state.CounterState)
+                { state with
+                      SaveFileState =
+                          { state.SaveFileState with
+                                Files =
+                                    if List.contains state.SaveFileState.ChosenFile state.SaveFileState.Files then
+                                        state.SaveFileState.Files
+                                    else
+                                        state.SaveFileState.Files
+                                        @ [ state.SaveFileState.ChosenFile ] } },
+                Cmd.none
+            | _ ->
+                let saveFileMsg =
+                    SaveFile.update savefilemsg state.SaveFileState
+
+                { state with
+                      SaveFileState = saveFileMsg },
+                Cmd.none
 
     let view (state: State) (dispatch) =
         DockPanel.create [ DockPanel.children [ TabControl.create [ TabControl.tabStripPlacement Dock.Top
@@ -68,6 +111,13 @@ module Shell =
                                                                                                                 (About.view
                                                                                                                     state.AboutState
                                                                                                                      (AboutMsg
+                                                                                                                      >> dispatch)) ]
+                                                                                           TabItem.create [ TabItem.header
+                                                                                                                "File"
+                                                                                                            TabItem.content
+                                                                                                                (SaveFile.view
+                                                                                                                    state.SaveFileState
+                                                                                                                     (SaveFileMsg
                                                                                                                       >> dispatch)) ] ] ] ] ]
 
     /// This is the main window of your application
