@@ -12,12 +12,23 @@ module Shell =
         | TableMsg of Table.Msg
         | SaveFileMsg of SaveFile.Msg
 
+    type StateCrutch =
+        { Grid: string array array
+          Cursor: (Table.Row * Table.Col)
+          CurrentCellData: string }
+
     let init =
         let tableState = Table.init
         let saveFileState = SaveFile.init
         { TableState = tableState
           SaveFileState = saveFileState },
         Cmd.none
+
+    module Utils =
+        let crutchToState (st: StateCrutch): Table.State =
+            { Grid = st.Grid |> Array.toList |> List.map Array.toList
+              Cursor = st.Cursor
+              CurrentCellData = st.CurrentCellData }
 
     module Controller =
         open System.IO
@@ -37,12 +48,12 @@ module Shell =
                         File.ReadAllText state.SaveFileState.ChosenFile
 
                     let newState =
-                        JsonSerializer.Deserialize<Table.StateCrutch> jsonNewState
+                        JsonSerializer.Deserialize<StateCrutch> jsonNewState
 
                     let tableMsg =
                         Table.Controller.update
                             (newState
-                             |> Table.Utils.crutchToState
+                             |> Utils.crutchToState
                              |> Table.NewGridMsg)
                             state.TableState
 

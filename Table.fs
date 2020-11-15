@@ -5,10 +5,7 @@ module Table =
     type Row = int
     type Col = int
 
-    type StateCrutch =
-        { Grid: string array array
-          Cursor: (Row * Col)
-          CurrentCellData: string }
+
 
     type State =
         { Grid: string list list
@@ -36,12 +33,6 @@ module Table =
         open Avalonia.Controls
         open Avalonia.Media
         open Avalonia.Layout
-
-
-        let crutchToState (st: StateCrutch) =
-            { Grid = st.Grid |> Array.toList |> List.map Array.toList
-              Cursor = st.Cursor
-              CurrentCellData = st.CurrentCellData }
 
         let mainWindow () =
             (Avalonia.Application.Current.ApplicationLifetime :?> ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime).MainWindow
