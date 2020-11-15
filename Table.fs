@@ -1,11 +1,8 @@
 namespace Lab1
 
 module Table =
-
     type Row = int
     type Col = int
-
-
 
     type State =
         { Grid: string list list
