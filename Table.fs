@@ -25,6 +25,10 @@ module Table =
         | CurrentCellDataMsg of string
         | NewGridMsg of State
 
+    let init: State =
+        { Grid = [ for _ in 0 .. 10 -> [ for _ in 0 .. 10 -> "" ] ]
+          Cursor = (2, 2)
+          CurrentCellData = "" }
 
     module Utils =
         open FParsec
@@ -131,12 +135,6 @@ module Table =
             match run expr (str |> parseStr) with
             | Success (a, _, _) -> a |> sprintf "%i"
             | Failure (_) -> if str = "" then "" else "#ERROR"
-
-
-    let init: State =
-        { Grid = [ for _ in 0 .. 10 -> [ for _ in 0 .. 10 -> "" ] ]
-          Cursor = (2, 2)
-          CurrentCellData = "" }
 
     module Controller =
         open Utils
