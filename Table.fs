@@ -107,18 +107,49 @@ module Table =
 
             opp.TermParser <- term
 
+            let unaryPlusOperator = PrefixOperator("+", spaces, 1, true, id)
 
-            opp.AddOperator(PrefixOperator("+", spaces, 1, true, id))
-            opp.AddOperator(PrefixOperator("-", spaces, 1, false, (fun x -> 0 - x)))
-            opp.AddOperator(InfixOperator("^", spaces, 2, Associativity.Right, (fun x y -> int (float x ** float y))))
-            opp.AddOperator(PrefixOperator("inc", spaces, 2, false, (fun x -> x + 1)))
-            opp.AddOperator(PrefixOperator("dec", spaces, 2, false, (fun x -> x - 1)))
-            opp.AddOperator(InfixOperator("div", spaces, 2, Associativity.Left, (/)))
-            opp.AddOperator(InfixOperator("mod", spaces, 2, Associativity.Left, (%)))
-            opp.AddOperator(InfixOperator("+", spaces, 3, Associativity.Left, (+)))
-            opp.AddOperator(InfixOperator("-", spaces, 3, Associativity.Left, (-)))
-            opp.AddOperator(InfixOperator("*", spaces, 4, Associativity.Left, (fun x y -> x * y)))
-            opp.AddOperator(InfixOperator("/", spaces, 4, Associativity.Left, (/)))
+            let unaryMinusOperator =
+                PrefixOperator("-", spaces, 1, false, (fun x -> 0 - x))
+
+            let powOperator =
+                InfixOperator("^", spaces, 2, Associativity.Right, (fun x y -> int (float x ** float y)))
+
+            let incOperator =
+                PrefixOperator("inc", spaces, 2, false, (fun x -> x + 1))
+
+            let decOperator =
+                PrefixOperator("dec", spaces, 2, false, (fun x -> x - 1))
+
+            let divOperator =
+                InfixOperator("div", spaces, 2, Associativity.Left, (/))
+
+            let modOperator =
+                InfixOperator("mod", spaces, 2, Associativity.Left, (%))
+
+            let binaryPlusOperator =
+                InfixOperator("+", spaces, 3, Associativity.Left, (+))
+
+            let binaryMinusOperator =
+                InfixOperator("-", spaces, 3, Associativity.Left, (-))
+
+            let productOperator =
+                InfixOperator("*", spaces, 4, Associativity.Left, (fun x y -> x * y))
+
+            let divideOperator =
+                InfixOperator("/", spaces, 4, Associativity.Left, (/))
+
+            opp.AddOperator unaryPlusOperator
+            opp.AddOperator unaryMinusOperator
+            opp.AddOperator powOperator
+            opp.AddOperator incOperator
+            opp.AddOperator decOperator
+            opp.AddOperator divOperator
+            opp.AddOperator modOperator
+            opp.AddOperator binaryPlusOperator
+            opp.AddOperator binaryMinusOperator
+            opp.AddOperator productOperator
+            opp.AddOperator divideOperator
 
             match run expr (str |> parseStr) with
             | Success (a, _, _) -> a |> sprintf "%i"
