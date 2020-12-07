@@ -66,7 +66,8 @@ module SaveFile =
                                  UniformGrid.columns 3
                                  UniformGrid.horizontalAlignment HorizontalAlignment.Center
                                  UniformGrid.children [ controlButton "Save" (fun _ -> SaveMsg |> dispatch)
-                                                        controlButton "Load" (fun _ -> LoadMsg |> dispatch)
+                                                        controlButton "Load(Don't saves current data!)" (fun _ ->
+                                                            LoadMsg |> dispatch)
                                                         controlButton "Quit Without Save(CAREFUL!)" (fun _ ->
                                                             QuitMsg |> dispatch) ] ]
 

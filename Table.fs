@@ -232,15 +232,14 @@ module Table =
                                                                                  (state.Grid.Item(fst (state.Cursor))
                                                                                        .Item(snd (state.Cursor)))) ]
                                                         controlButton true "Set cell value" (fun _ ->
-                                                            (UpdateCellMsg |> dispatch))
-                                                        controlButton false "Add new row" (fun _ ->
-                                                            (AddRowMsg |> dispatch))
+                                                            dispatch UpdateCellMsg)
+                                                        controlButton false "Add new row" (fun _ -> dispatch AddRowMsg)
                                                         controlButton false "Add new column" (fun _ ->
-                                                            (AddColumnMsg |> dispatch))
+                                                            dispatch AddColumnMsg)
                                                         controlButton false "Remove last row" (fun _ ->
-                                                            (RemoveRowMsg |> dispatch))
+                                                            dispatch RemoveRowMsg)
                                                         controlButton false "Remove last column" (fun _ ->
-                                                            (RemoveColumnMsg |> dispatch)) ] ]
+                                                            dispatch RemoveColumnMsg) ] ]
 
         let genetateCell row col state dispatch =
             let isZeroRow = row = 0

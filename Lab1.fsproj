@@ -14,9 +14,9 @@
         <AvaloniaResource Include="./Styles.xaml" />
         <AvaloniaResource Include="**/*.xaml" />
         <AvaloniaResource Include="**\*.xaml" />
-        <AvaloniaResource Include="*.xaml" /> 
+        <AvaloniaResource Include="*.xaml" />
     </ItemGroup>
-    
+
     <ItemGroup>
         <PackageReference Include="Avalonia.Desktop" Version="0.9.12" />
         <PackageReference Include="FParsec" Version="1.1.1" />
